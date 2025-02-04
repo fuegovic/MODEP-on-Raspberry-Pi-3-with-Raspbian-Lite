@@ -255,8 +255,9 @@ sudo nano /boot/config.txt
 
 Add the following line at the end:
 ```sh
-dtoverlay=gpio-shutdown
+dtoverlay=gpio-shutdown,debounce=3000
 ```
+>**Note:** The `debounce=3000` parameter ensures the button must be held for at least 3 seconds to trigger a shutdown. Short presses will be ignored.
 
 Save and exit:
 - Press `CTRL+X`, then `Y`, then `Enter`.
