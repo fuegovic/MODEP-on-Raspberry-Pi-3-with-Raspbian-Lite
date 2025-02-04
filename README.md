@@ -1,103 +1,111 @@
-# **Complete Guide: Setting Up MODEP on Raspberry Pi 3 (Raspbian Lite & USB audio)**
+# Complete Guide: Setting Up MODEP on Raspberry Pi 3 (Raspbian Lite & USB audio)
+
+## Table of Contents
+1. [Before You Begin](#-before-you-begin)
+   - [Step 1: Prepare the SD Card](#step-1-prepare-the-sd-card)
+   - [Step 2: Initial Setup](#step-2-initial-setup)
+2. [Install MODEP](#️-install-modep)
+   - [Step 1: Install MODEP](#step-1-install-modep)
+   - [Step 2: Enable Auto-Login](#step-2-enable-auto-login-console-mode)
+3. [Check and Start MODEP Services](#-check-and-start-modep-services)
+4. [Configure JACK for USB Audio Devices](#-configure-jack-for-usb-audio-devices)
+   - [Step 1: Identify Audio Devices](#step-1-identify-audio-devices)
+   - [Step 2: Set Up JACK](#step-2-set-up-jack)
+5. [Optimize Performance](#-optimize-performance-reduce-audio-crackles)
+   - [Step 1: Adjust Realtime Priority](#step-1-adjust-realtime-priority)
+   - [Step 2: Increase USB Audio Stability](#step-2-increase-usb-audio-stability)
+   - [Step 3: Optional Overclocking](#step-3-optional-overclocking-)
+6. [Set Up a Wi-Fi Hotspot](#-set-up-a-wi-fi-hotspot-for-modep-web-ui-access)
+   - [Step 1: Identify Your Wi-Fi Adapter](#step-1-identify-your-wi-fi-adapter)
+   - [Step 2: Create a Wi-Fi Hotspot](#step-2-create-a-wi-fi-hotspot)
+   - [Step 3: Configure Auto-Connect on Boot](#step-3-configure-auto-connect-on-boot)
+7. [Add a Shutdown Button](#-add-a-shutdown-button)
+   - [Step 1: Wiring the Button](#step-1-wiring-the-button)
+   - [Step 2: Button Setup Options](#step-2-option-a-basic-shutdown-button-no-led)
+   - [Step 3: Run the Script on Startup](#step-3-run-the-script-on-startup)
+   - [Step 4: Test the Shutdown Button](#step-4-test-the-shutdown-button)
 
 > Replace `<username>` with your preferred user and hostname.
 
-## **💻 Before You Begin**
+## 💻 Before You Begin
 
-### **Step 1: Prepare the SD Card**
+### Step 1: Prepare the SD Card
+- Download and install [Pi-imager](https://github.com/guysoft/pi-imager/releases)
+- Select **Raspbian Lite** as the OS
+- Configure your **username/hostname** in the settings
+- Write the image to the SD card
 
-- Download and install [Pi-imager](https://github.com/guysoft/pi-imager/releases).
-- Select **Raspbian Lite** as the OS.
-- Configure your **username/hostname** in the settings.
-- Write the image to the SD card.
-
-### **Step 2: Initial Setup**
-
-- Insert the SD card into the Raspberry Pi and power it on.
-- Connect to the internet (Ethernet or Wi-Fi).
+### Step 2: Initial Setup
+- Insert the SD card into the Raspberry Pi and power it on
+- Connect to the internet (Ethernet or Wi-Fi)
 - Update the system:
   ```sh
   sudo apt update && sudo apt upgrade -y
   ```
 
-## **🎚️ Install MODEP**
+## 🎚️ Install MODEP
 
 MODEP (MOD Emulation Pedalboard) turns your Raspberry Pi into a powerful multi-effects unit. Follow these steps to install it:
 
-### **Step 1: Install MODEP**
-
+### Step 1: Install MODEP
 ```bash
 curl https://blokas.io/apt-setup.sh | sh
 sudo apt update
 sudo apt install modep -y
 ```
 
-### **Step 2: Enable Auto-Login (Console Mode)**
-
+### Step 2: Enable Auto-Login (Console Mode)
 ```bash
 sudo raspi-config
 ```
-
 - Navigate to **System Options > Boot/Auto Login > Console Autologin**
 - Save and reboot:
-
 ```bash
 sudo reboot
 ```
 
-## **🚀 Check and Start MODEP Services**
+## 🚀 Check and Start MODEP Services
 
 Verify that MODEP services are running:
-
 ```bash
 systemctl list-units --type=service | grep modep
 ```
 
 Critical services:
-
 - `modep-mod-ui`
 - `modep-mod-host`
 - `jack`
 
 If the UI is not accessible, restart the services:
-
 ```bash
 sudo systemctl stop modep-mod-ui modep-mod-host jack
 sudo systemctl start jack modep-mod-host modep-mod-ui
 ```
 
 Check statuses:
-
 ```bash
 sudo systemctl status jack
 sudo systemctl status modep-mod-host
 sudo systemctl status modep-mod-ui
 ```
 
-If `jack` fails, it's likely a configuration issue.
+## 🔊 Configure JACK for USB Audio Devices
 
-## **🔊 Configure JACK for USB Audio Devices**
-
-### **Step 1: Identify Audio Devices**
-
+### Step 1: Identify Audio Devices
 Run:
-
 ```bash
 aplay -l
 ```
 
 Look for your USB audio device in the output. It may be listed as **Headset**, **CODEC**, or another name (e.g., `hw:DeviceName,0`).
 
-### **Step 2: Set Up JACK**
-
+### Step 2: Set Up JACK
 Edit `/etc/jackdrc`:
-
 ```bash
 sudo nano /etc/jackdrc
 ```
 
 Replace with:
-
 ```
 exec /usr/bin/jackd -t 2000 -R -P 70 -d alsa -d hw:<DeviceName>,0 -r 48000 -p 512 -n 4 -X seq -s -S
 ```
@@ -107,29 +115,24 @@ exec /usr/bin/jackd -t 2000 -R -P 70 -d alsa -d hw:<DeviceName>,0 -r 48000 -p 51
 Save and exit (`CTRL+X`, then `Y`, then `Enter`).
 
 Restart JACK:
-
 ```bash
 sudo systemctl restart jack
 ```
 
 Check logs:
-
 ```bash
 sudo journalctl --unit=jack --no-pager | grep XRUN
 ```
 
-## **✨ Optimize Performance (Reduce Audio Crackles)**
+## ✨ Optimize Performance (Reduce Audio Crackles)
 
-### **Step 1: Adjust Realtime Priority**
-
+### Step 1: Adjust Realtime Priority
 Edit `/etc/security/limits.conf`:
-
 ```bash
 sudo nano /etc/security/limits.conf
 ```
 
 Add at the end:
-
 ```
 @audio   -  rtprio     99
 @audio   -  memlock    unlimited
@@ -138,40 +141,33 @@ Add at the end:
 <username>  -  memlock    unlimited
 <username>  -  nice       -20
 ```
-> **Note:** Replace `<username>` with your username
+> Replace `<username>` with your username
 
-Save and exit.
-
-### **Step 2: Increase USB Audio Stability**
-
+### Step 2: Increase USB Audio Stability
 ```bash
 sudo nano /boot/cmdline.txt
 ```
 
 Add this at the end of the existing line (don't start a new line):
-
 ```
 usbcore.autosuspend=-1
 ```
 
 Save and reboot:
-
 ```bash
 sudo reboot
 ```
 
-### **Step 3: Optional Overclocking 💪**
+### Step 3: Optional Overclocking 💪
 
 > ⚠️ **Caution:** Overclocking can improve performance but may increase heat and power consumption. It is only recommended if you experience audio glitches (xruns). Ensure proper cooling and power stability.
 
-If you decide to overclock, edit the config file:
-
+Edit the config file:
 ```sh
 sudo nano /boot/firmware/config.txt
 ```
 
 Add the following:
-
 ```sh
 # Run as fast as firmware / board allows
 arm_boost=1
@@ -194,23 +190,18 @@ dtparam=sd_overclock=100
 > `sdram_freq` could be set lower, to a safer 500MHz.
 
 Save and reboot:
-
 ```bash
 sudo reboot
 ```
 
-## **🛜 Set Up a Wi-Fi Hotspot (For MODEP Web UI Access)**
+## 🛜 Set Up a Wi-Fi Hotspot (For MODEP Web UI Access)
 
-### **Step 1: Identify Your Wi-Fi Adapter**
-
-Run the following command to check available network devices:
-
+### Step 1: Identify Your Wi-Fi Adapter
 ```sh
 nmcli device
 ```
 
-You should see an output similar to this:
-
+You should see output similar to:
 ```sh
 DEVICE         TYPE      STATE        CONNECTION
 wlan0          wifi      disconnected --
@@ -218,250 +209,156 @@ eth0           ethernet  connected    Wired connection 1
 lo             loopback  unmanaged    --
 ```
 
-> The built-in Raspberry Pi Wi-Fi module is typically listed as **wlan0**.
-
-### **Step 2: Create a Wi-Fi Hotspot**
-
-Run the following command, replacing `<hotspot-name>` and `<password>` with your desired network name and password:
-
+### Step 2: Create a Wi-Fi Hotspot
 ```sh
 sudo nmcli device wifi hotspot ssid <hotspot-name> password <password> ifname wlan0
 ```
 
-### **Step 3: Configure Auto-Connect on Boot**
-
-Run the following command to list network connections:
-
+### Step 3: Configure Auto-Connect on Boot
+List network connections:
 ```sh
 nmcli connection
 ```
 
-Copy the **UUID** of the hotspot from the output and use it in the next command:
-
+View connection details:
 ```sh
 nmcli connection show <hotspot-UUID>
 ```
 
-Check these properties:
-
-```sh
-connection.autoconnect:                 no
-connection.autoconnect-priority:        0
-```
-
-Enable auto-connect and set priority:
-
+Enable auto-connect:
 ```sh
 sudo nmcli connection modify <hotspot-UUID> connection.autoconnect yes connection.autoconnect-priority 100
 ```
 
-Verify the changes:
-
+Verify changes:
 ```sh
 nmcli connection show <hotspot-UUID>
 ```
 
-Now, your Wi-Fi hotspot will automatically activate whenever the Raspberry Pi boots.
+## 📴 Add a Shutdown Button
 
-Now you should have **MODEP running smoothly on your Raspberry Pi 3**! 🎚️
+### Step 1: Wiring the Button
+1. Connect one leg of the push button to GPIO 26
+2. Connect the other leg to GND (Ground)
+3. (Optional) For LED: Connect anode to GPIO 17 through 330Ω resistor, cathode to GND
 
-## **📴 Add a Shutdown Button**
+### Step 2 (Option A): Basic Shutdown Button (No LED)
 
-This section explains how to add a physical shutdown button for your Raspberry Pi using a GPIO pin and a Python script. Additionally, you'll have the option to add an LED for visual feedback.
-
----
-
-### **Step 1: Wiring the Button**
-
-1. Connect one leg of the push button to a GPIO pin (e.g., `GPIO 26`).
-2. Connect the other leg of the push button to a **GND (Ground)** pin.
-
-> If you're also adding an LED, connect the **long leg (anode)** of the LED to a GPIO pin (e.g., `GPIO 17`) through a resistor (330Ω is recommended). Connect the **short leg (cathode)** to **GND**.
-
-### **Step 2 (Option A): Basic Shutdown Button (No LED)**
-
-Using just the button, we'll create a script that requires the button to be held for **3 seconds** before shutting down the Raspberry Pi.
-
-#### **Install required libraries**
-
-Update the package repository and install `gpiozero`:
-
+Install required libraries:
 ```sh
 sudo apt-get update
 sudo apt-get install python3-gpiozero
 ```
 
-#### **Create the basic shutdown script**
+Create shutdown script:
+```sh
+nano shutdown_button.py
+```
 
-1. Create a new Python file:
-   ```sh
-   nano shutdown_button.py
-   ```
+```python
+from gpiozero import Button
+import os
+import time
 
-2. Paste the following code:
+shutdown_button = Button(26, hold_time=3)
 
-   ```python
-   from gpiozero import Button
-   import os
-   import time
+def shutdown():
+    print("Shutdown button pressed and held for 3 seconds")
+    os.system("sudo shutdown now")
 
-   # Define the GPIO pin the button is connected to
-   shutdown_button = Button(26, hold_time=3)
+shutdown_button.when_held = shutdown
 
-   # Function to shutdown the Raspberry Pi
-   def shutdown():
-       print("Shutdown button pressed and held for 3 seconds")
-       os.system("sudo shutdown now")
+while True:
+    time.sleep(1)
+```
 
-   # When the button is held for 3 seconds, call the shutdown function
-   shutdown_button.when_held = shutdown
-
-   # Keep the script running
-   while True:
-       time.sleep(1)
-   ```
-
-3. Save the file (`CTRL+X`, then `Y`, then `Enter`).
-
-#### **Make the script executable**
-
-Run the following command to make the script executable:
+Make executable:
 ```sh
 chmod +x shutdown_button.py
 ```
 
-### **Step 2 (Option B): Enhanced Shutdown Button (With LED Feedback)**
+### Step 2 (Option B): Enhanced Shutdown Button (With LED)
 
-This version adds visual feedback using an LED. The LED will blink while the button is held down for 3 seconds, and the Pi will shut down once the button is released after the hold.
-
-#### **Install required libraries**
-
-If you've already installed `gpiozero`, skip this step.
-
+Create enhanced script:
 ```sh
-sudo apt-get update
-sudo apt-get install python3-gpiozero
+nano shutdown_button_with_led.py
 ```
 
-#### **Create the enhanced shutdown script**
+```python
+from gpiozero import Button, LED
+import os
+import time
 
-1. Create a new Python file:
-   ```sh
-   nano shutdown_button_with_led.py
-   ```
+shutdown_button = Button(26, hold_time=3)
+status_led = LED(17)
 
-2. Paste the following code:
+def shutdown():
+    print("Shutdown button pressed and held for 3 seconds")
+    status_led.on()
+    os.system("sudo shutdown now")
 
-   ```python
-   from gpiozero import Button, LED
-   import os
-   import time
+def blink_led():
+    print("Button held, blinking LED...")
+    for _ in range(6):
+        status_led.toggle()
+        time.sleep(0.5)
 
-   # Define GPIO pins for the button and LED
-   shutdown_button = Button(26, hold_time=3)
-   status_led = LED(17)
+shutdown_button.when_held = blink_led
+shutdown_button.when_released = shutdown
+status_led.off()
 
-   # Function to shutdown the Raspberry Pi
-   def shutdown():
-       print("Shutdown button pressed and held for 3 seconds")
-       status_led.on()  # Turn on the LED just before system shuts down
-       os.system("sudo shutdown now")
+while True:
+    time.sleep(1)
+```
 
-   # Function to blink the LED while the button is held
-   def blink_led():
-       print("Button held, blinking LED...")
-       for _ in range(6):  # Blink for 3 seconds (6 blinks, each lasting 0.5s)
-           status_led.toggle()
-           time.sleep(0.5)
-
-   # Configure button behavior
-   shutdown_button.when_held = blink_led  # Blink LED while held
-   shutdown_button.when_released = shutdown  # Shut down when button is released after 3+ seconds
-
-   # Ensure the LED stays off initially
-   status_led.off()
-
-   # Keep the script running
-   while True:
-       time.sleep(1)
-   ```
-
-3. Save the file (`CTRL+X`, then `Y`, then `Enter`).
-
-#### **Make the script executable**
-
-Run the following command:
+Make executable:
 ```sh
 chmod +x shutdown_button_with_led.py
 ```
 
-### **Step 3: Run the Script on Startup**
+### Step 3: Run the Script on Startup
 
-To ensure that the shutdown button script runs automatically whenever the Pi boots, you can use **rc.local** or create a **systemd service**. These instructions apply to **both the basic and LED-enhanced versions**. Just replace `<script_name.py>` with the appropriate script (`shutdown_button.py` or `shutdown_button_with_led.py`).
+#### Option 1: Using rc.local
+```sh
+sudo nano /etc/rc.local
+```
 
-#### **Option 1: Using rc.local**
+Add before `exit 0`:
+```sh
+python3 /<script_path>/<script_name.py> &
+```
 
-1. Open the `rc.local` file:
-   ```sh
-   sudo nano /etc/rc.local
-   ```
+#### Option 2: Using systemd
+Create service file:
+```sh
+sudo nano /etc/systemd/system/shutdown_button.service
+```
 
-2. Add the following line **before** the `exit 0` line. Replace `<script_path>` with the full path to your script:
+```
+[Unit]
+Description=Shutdown Button Service
+After=multi-user.target
 
-   ```sh
-   python3 /<script_path>/<script_name.py> &
-   ```
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /<script_path>/<script_name.py>
 
-3. Save the file and exit.
+[Install]
+WantedBy=multi-user.target
+```
 
+Enable and start:
+```sh
+sudo systemctl enable shutdown_button.service
+sudo systemctl start shutdown_button.service
+```
 
-#### **Option 2: Using systemd**
-
-1. Create a new systemd service file:
-   ```sh
-   sudo nano /etc/systemd/system/shutdown_button.service
-   ```
-
-2. Add the following content:
-
-   ```
-   [Unit]
-   Description=Shutdown Button Service
-   After=multi-user.target
-
-   [Service]
-   Type=simple
-   ExecStart=/usr/bin/python3 /<script_path>/<script_name.py>
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-   Replace `/path/to/<script_name.py>` with the full path to the Python script.
-
-3. Save the file and exit (`CTRL+X`, then `Y`, then `Enter`).
-
-4. Enable the service:
-   ```sh
-   sudo systemctl enable shutdown_button.service
-   ```
-
-5. Start the service:
-   ```sh
-   sudo systemctl start shutdown_button.service
-   ```
-
-### **Step 4: Test the Shutdown Button**
-
-To verify that your script and setup work:
-
-1. Press and hold the button for **3 seconds**.
-2. If using the LED version:
-   - The LED will blink while the button is held down.
-   - The Pi will shut down when the button is released after the 3-second hold.
-3. Check the status of the service for troubleshooting:
-   ```sh
-   sudo systemctl status shutdown_button.service
-   ```
-
-Now your Pi is configured with a hardware shutdown button, with or without LED feedback. ⚡
+### Step 4: Test the Shutdown Button
+1. Press and hold button for 3 seconds
+2. If using LED version:
+   - LED will blink during hold
+   - System shuts down on release
+3. Check service status:
+```sh
+sudo systemctl status shutdown_button.service
+```
