@@ -19,13 +19,16 @@
    - [Step 1: Identify Your Wi-Fi Adapter](#step-1-identify-your-wi-fi-adapter)
    - [Step 2: Create a Wi-Fi Hotspot](#step-2-create-a-wi-fi-hotspot)
    - [Step 3: Configure Auto-Connect on Boot](#step-3-configure-auto-connect-on-boot)
-7. [Add a Shutdown Button](#-add-a-shutdown-button)
+7. [Add a Shutdown and Power Up Button](#-add-a-shutdown-and-power-up-button)
    - [Step 1: Wiring the Button](#step-1-wiring-the-button)
-   - [Step 2: Button Setup Options](#step-2-option-a-basic-shutdown-button-no-led)
-   - [Step 3: Run the Script on Startup](#step-3-run-the-script-on-startup)
-   - [Step 4: Test the Shutdown Button](#step-4-test-the-shutdown-button)
+   - [Step 2: Enable the Button](#step-2-enable-the-shutdown-button-in-configtxt)
+   - [Step 3: Test the Button](#step-3-test-the-shutdown-button)
+   - [Why This Method?](#why-this-method)
+8. [Add an Activity LED (Optional)](##-add-an-activity-led-optional)
+   - [Step 1: Wiring the LED](#step-1-wiring-the-led)
+   - [Step 2: Enable the LED](#step-2-enable-the-serial-port-for-led-activity)
+   - [Step 3: Test the LED](#step-3-test-the-activity-led)
 
-> Replace `<username>` with your preferred user and hostname.
 
 ## 💻 Before You Begin
 
@@ -235,120 +238,78 @@ Verify changes:
 nmcli connection show <hotspot-UUID>
 ```
 
-## 📴 Add a Shutdown Button
+## 📴 Add a Shutdown and Power-Up Button
 
 ### Step 1: Wiring the Button
-1. Connect one leg of the push button to GPIO 26
-2. Connect the other leg to GND (Ground)
-3. (Optional) For LED: Connect anode to GPIO 17 through 330Ω resistor, cathode to GND
+1. Connect one leg of the push button to GPIO 3 (pin 5)  
+2. Connect the other leg to GND (pin 6)
 
-### Step 2 (Option A): Basic Shutdown Button (No LED)
+*Note:* GPIO 3 is part of the Raspberry Pi's hardware and supports both shutdown (with software configuration) and power-up functionality natively.
 
-Install required libraries:
+### Step 2: Enable the Shutdown Button in `config.txt`
+
+Edit the Raspberry Pi's configuration file:
 ```sh
-sudo apt-get update
-sudo apt-get install python3-gpiozero
+sudo nano /boot/config.txt
 ```
 
-Create shutdown script:
+Add the following line at the end:
 ```sh
-nano shutdown_button.py
+dtoverlay=gpio-shutdown
 ```
 
-```python
-from gpiozero import Button
-import os
-import time
+Save and exit:
+- Press `CTRL+X`, then `Y`, then `Enter`.
 
-shutdown_button = Button(26, hold_time=3)
-
-def shutdown():
-    print("Shutdown button pressed and held for 3 seconds")
-    os.system("sudo shutdown now")
-
-shutdown_button.when_held = shutdown
-
-while True:
-    time.sleep(1)
-```
-
-Make executable:
+Reboot your Pi to apply the changes:
 ```sh
-chmod +x shutdown_button.py
+sudo reboot
 ```
 
-### Step 2 (Option B): Enhanced Shutdown Button (With LED)
+### Step 3: Test the Shutdown Button
+1. Press the button briefly while the Raspberry Pi is running.
+   - The system will safely shut down.
+2. Press the button again (post-shutdown) to power the Pi back on.
 
-Create enhanced script:
+---
+
+### Why This Method?
+- **No dependencies or Python scripts required**: Configuration happens directly in `config.txt`.
+- **Built-in power-up support**: GPIO 3 (pin 5) works for both shutdown and power-up.
+- **Efficient and lightweight**: Uses system-level hardware features without running extra processes or services.
+
+---
+
+### 🟢 Add an Activity LED (Optional)
+**Show activity feedback for disk writes.** You can connect an LED to monitor the system's disk activity.
+
+### Step 1: Wiring the LED
+1. Connect the **anode** (long leg) of the LED to GPIO 14 (TX) *(pin 8)* through a 330Ω resistor.
+2. Connect the **cathode** (short leg) to GND *(pin 6)*.
+
+### Step 2: Enable the Serial Port for LED Activity
+Edit the `config.txt` file:
 ```sh
-nano shutdown_button_with_led.py
+sudo nano /boot/config.txt
 ```
 
-```python
-from gpiozero import Button, LED
-import os
-import time
-
-shutdown_button = Button(26, hold_time=3)
-status_led = LED(17)
-
-def shutdown():
-    print("Shutdown button pressed and held for 3 seconds")
-    status_led.on()
-    os.system("sudo shutdown now")
-
-def blink_led():
-    print("Button held, blinking LED...")
-    for _ in range(6):
-        status_led.toggle()
-        time.sleep(0.5)
-
-shutdown_button.when_held = blink_led
-shutdown_button.when_released = shutdown
-status_led.off()
-
-while True:
-    time.sleep(1)
-```
-
-Make executable:
+Add the following lines:
 ```sh
-chmod +x shutdown_button_with_led.py
+enable_uart=1
+dtoverlay=disable-bt #Optional
 ```
 
-### Step 3: Run the Script on Startup
+Save and exit:
+- Press `CTRL+X`, then `Y`, then `Enter`.
 
-#### Using systemd
-Create service file:
+Reboot your Pi:
 ```sh
-sudo nano /etc/systemd/system/shutdown_button.service
+sudo reboot
 ```
 
-```
-[Unit]
-Description=Shutdown Button Service
-After=multi-user.target
+### Step 3: Test The Activity LED
+Once configured:
+1. The LED will blink on GPIO14 (TX pin) whenever the system sends serial data.
+2. This activity reflects disk I/O or other data being output from the Raspberry Pi.
 
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 /<script_path>/<script_name.py>
 
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-```sh
-sudo systemctl enable shutdown_button.service
-sudo systemctl start shutdown_button.service
-```
-
-### Step 4: Test the Shutdown Button
-1. Press and hold button for 3 seconds
-2. If using LED version:
-   - LED will blink during hold
-   - System shuts down on release
-3. Check service status:
-```sh
-sudo systemctl status shutdown_button.service
-```
