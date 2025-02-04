@@ -318,17 +318,7 @@ chmod +x shutdown_button_with_led.py
 
 ### Step 3: Run the Script on Startup
 
-#### Option 1: Using rc.local
-```sh
-sudo nano /etc/rc.local
-```
-
-Add before `exit 0`:
-```sh
-python3 /<script_path>/<script_name.py> &
-```
-
-#### Option 2: Using systemd
+#### Using systemd
 Create service file:
 ```sh
 sudo nano /etc/systemd/system/shutdown_button.service
