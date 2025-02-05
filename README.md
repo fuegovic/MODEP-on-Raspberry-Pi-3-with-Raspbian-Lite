@@ -110,7 +110,7 @@ sudo nano /etc/jackdrc
 
 Replace with:
 ```
-exec /usr/bin/jackd -t 2000 -R -P 70 -d alsa -d hw:<DeviceName>,0 -r 48000 -p 512 -n 4 -X seq -s -S
+exec /usr/bin/jackd -t 2000 -R -P 70 -d alsa -d hw:<DeviceName>,0 -r 48000 -p 256 -n 4 -X seq -s -S
 ```
 
 > Replace `<DeviceName>` with the name identified in the previous step.
