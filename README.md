@@ -55,7 +55,9 @@ MODEP (MOD Emulation Pedalboard) turns your Raspberry Pi into a powerful multi-e
 curl https://blokas.io/apt-setup.sh | sh
 sudo apt update
 sudo apt install modep -y
+sudo apt install libfluidsynth3
 ```
+> `libfluidsynth3` is required for instruments from [FluidPlug](https://github.com/falkTX/FluidPlug)
 
 ### Step 2: Enable Auto-Login (Console Mode)
 ```bash
